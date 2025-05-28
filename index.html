@@ -1,24 +1,9 @@
-
-                        <!DOCTYPE html>
-                        <html lang="en">
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body {
-                  background-color: white; /* Ensure the iframe has a white background */
-                }
-    
-                
-              </style>
-                        </head>
-                        <body>
-                            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Working ChatBot</title>
+  <title>AI ChatBot</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -142,8 +127,8 @@
 </head>
 <body>
   <div class="loading" id="loading">
-    <div>Loading model...</div>
-    <div class="progress-text"></div>
+    <div>Loading AI model...</div>
+    <div class="progress-text">0%</div>
   </div>
   
   <div class="chat-container hidden" id="chatContainer">
@@ -156,36 +141,33 @@
 
   <div class="hidden" id="errorContainer">
     <div style="color: red; padding: 20px;">
-      <p>Failed to load model</p>
+      <p>Failed to initialize chatbot</p>
       <div class="error-details" id="errorDetails"></div>
       <button onclick="window.location.reload()">Try Again</button>
     </div>
   </div>
 
   <!-- Load Transformers.js -->
-  <script src="https://unpkg.com/@xenova/transformers@2.15.0/dist/transformers.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ @xenova/transformers@2.15.0/dist/transformers.min.js"></script>
   <script>
-    // Wait for library to load
-    async function initialize() {
+    document.addEventListener('DOMContentLoaded', async () => {
       const MODEL_NAME = 'Xenova/gpt2-quantized';
       let pipelineInstance;
       let isLoading = true;
 
       try {
-        // Check if library is loaded
-        if (typeof transformers === 'undefined') {
-          throw new Error('Transformers.js library failed to load');
-        }
-
-        // Check environment
+        // Environment checks
         if (typeof WebAssembly === 'undefined') {
           throw new Error('WebAssembly not supported');
         }
         if (!window.isSecureContext) {
           throw new Error('Requires HTTPS or localhost');
         }
+        if (!transformers || !transformers.pipeline) {
+          throw new Error('Transformers.js failed to load');
+        }
 
-        // Load model with progress
+        // Load model with progress tracking
         const progressElement = document.querySelector('#loading .progress-text');
         pipelineInstance = await transformers.pipeline('text-generation', MODEL_NAME, {
           quantized: true,
@@ -200,25 +182,19 @@
         document.getElementById('chatContainer').classList.remove('hidden');
         isLoading = false;
 
-        return pipelineInstance;
-
       } catch (error) {
-        // Handle errors
+        // Handle initialization errors
         const errorDetails = document.getElementById('errorDetails');
         errorDetails.textContent = `Error: ${error.message}`;
-        console.error('Full error:', error);
+        console.error('Initialization failed:', error);
         
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('errorContainer').classList.remove('hidden');
       }
-    }
 
-    // Initialize model and setup message handling
-    (async () => {
-      const pipelineInstance = await initialize();
-
+      // Message handling function
       window.sendMessage = async () => {
-        if (!pipelineInstance) return;
+        if (isLoading || !pipelineInstance) return;
 
         const input = document.getElementById('userInput').value.trim();
         if (!input) return;
@@ -234,7 +210,8 @@
           // Generate response
           const result = await pipelineInstance(input, {
             max_new_tokens: 50,
-            do_sample: true
+            do_sample: true,
+            temperature: 0.7
           });
           
           botMessage.textContent = result[0].generated_text;
@@ -245,29 +222,21 @@
           errorDetails.className = 'error-details';
           errorDetails.textContent = `Inference Error: ${error.message}`;
           botMessage.appendChild(errorDetails);
-          console.error('Inference error:', error);
+          console.error('Inference failed:', error);
         }
       };
-    })();
 
-    function addMessage(text, className) {
-      const message = document.createElement('div');
-      message.className = `message ${className}`;
-      message.textContent = text;
-      document.getElementById('chatHistory').appendChild(message);
-      document.getElementById('chatHistory').scrollTop = 
-        document.getElementById('chatHistory').scrollHeight;
-      return message;
-    }
+      // Helper function to add messages
+      function addMessage(text, className) {
+        const message = document.createElement('div');
+        message.className = `message ${className}`;
+        message.textContent = text;
+        document.getElementById('chatHistory').appendChild(message);
+        document.getElementById('chatHistory').scrollTop = 
+          document.getElementById('chatHistory').scrollHeight;
+        return message;
+      }
+    });
   </script>
 </body>
 </html>
-
-
-    
-              <script>
-                              
-              </script>
-                        </body>
-                        </html>
-                    
