@@ -3,9 +3,104 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Debuggable ChatBot</title>
+  <title>Working ChatBot</title>
   <style>
-    /* ... [Keep existing styles from previous version] ... */
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-history {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      border-bottom: 1px solid #eee;
+    }
+
+    .message {
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 8px;
+      max-width: 75%;
+      font-size: 14px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .user-msg {
+      background: #007bff;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 0;
+    }
+
+    .bot-msg {
+      background: #f0f0f0;
+      color: #333;
+      margin-right: auto;
+      border-bottom-left-radius: 0;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 8px;
+      background: #fff;
+      gap: 8px;
+    }
+
+    #userInput {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 12px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 18px;
+      color: #666;
+      z-index: 1000;
+    }
+
+    .hidden { display: none; }
+
     .error-details {
       background: #ffebee;
       color: #c62828;
@@ -15,6 +110,18 @@
       font-size: 12px;
       max-height: 100px;
       overflow-y: auto;
+    }
+
+    @media (max-width: 480px) {
+      .chat-container {
+        border-radius: 0;
+        height: 100vh;
+        margin: 0;
+      }
+      
+      .message {
+        font-size: 16px;
+      }
     }
   </style>
 </head>
@@ -40,15 +147,16 @@
     </div>
   </div>
 
+  <!-- Load Transformers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ @xenova/transformers@2.14.0/dist/transformers.min.js"></script>
   <script>
-    const MODEL_NAME = 'Xenova/gpt2-quantized'; // Change to your model
+    const MODEL_NAME = 'Xenova/gpt2-quantized';
     let pipelineInstance;
     let isLoading = true;
 
     async function initializeModel() {
       try {
-        // Environment checks
+        // Check environment
         if (typeof WebAssembly === 'undefined') {
           throw new Error('WebAssembly not supported');
         }
@@ -56,9 +164,9 @@
           throw new Error('Requires HTTPS or localhost');
         }
 
-        // Model loading with progress
+        // Load model with progress
         const progressElement = document.querySelector('#loading .progress-text');
-        pipelineInstance = await pipeline('text-generation', MODEL_NAME, {
+        pipelineInstance = await transformers.pipeline('text-generation', MODEL_NAME, {
           quantized: true,
           max_length: 100,
           progress_callback: (progress) => {
@@ -66,10 +174,12 @@
           }
         });
 
+        // Show chat interface
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('chatContainer').classList.remove('hidden');
         isLoading = false;
       } catch (error) {
+        // Handle errors
         const errorDetails = document.getElementById('errorDetails');
         errorDetails.textContent = `Error: ${error.message}`;
         console.error('Full error:', error);
@@ -93,6 +203,7 @@
       const botMessage = addMessage('...', 'bot-msg');
       
       try {
+        // Generate response
         const result = await pipelineInstance(input, {
           max_new_tokens: 50,
           do_sample: true
@@ -100,6 +211,7 @@
         
         botMessage.textContent = result[0].generated_text;
       } catch (error) {
+        // Handle generation errors
         botMessage.textContent = 'Error generating response';
         const errorDetails = document.createElement('div');
         errorDetails.className = 'error-details';
@@ -119,6 +231,7 @@
       return message;
     }
 
+    // Initialize the model
     initializeModel();
   </script>
 </body>
