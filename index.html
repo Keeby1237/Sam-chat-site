@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Working ChatBot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-history {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      border-bottom: 1px solid #eee;
+    }
+
+    .message {
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 8px;
+      max-width: 75%;
+      font-size: 14px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .user-msg {
+      background: #007bff;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 0;
+    }
+
+    .bot-msg {
+      background: #f0f0f0;
+      color: #333;
+      margin-right: auto;
+      border-bottom-left-radius: 0;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 8px;
+      background: #fff;
+      gap: 8px;
+    }
+
+    #userInput {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 12px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 18px;
+      color: #666;
+      z-index: 1000;
+    }
+
+    .hidden { display: none; }
+
+    @media (max-width: 480px) {
+      .chat-container {
+        border-radius: 0;
+        height: 100vh;
+        margin: 0;
+      }
+      
+      .message {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading" id="loading">
+    <div>Loading model...</div>
+    <div style="font-size: 14px; color: #999;">This may take 1-2 minutes on first load</div>
+  </div>
+  <div class="chat-container hidden" id="chatContainer">
+    <div class="chat-history" id="chatHistory"></div>
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="Type your message...">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+  <div class="hidden" id="errorContainer">
+    <div style="color: red; padding: 20px;">
+      <p>Failed to load model. Possible reasons:</p>
+      <ul style="text-align: left;">
+        <li>Network connection issues</li>
+        <li>Model not compatible with your device</li>
+        <li>Browser doesn't support WebAssembly</li>
+      </ul>
+      <button onclick="window.location.reload()">Try Again</button>
+    </div>
+  </div>
+
+  <!-- Load Transformers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ @xenova/transformers@2.14.0/dist/transformers.min.js"></script>
+  <script>
+    const MODEL_NAME = 'Xenova/gpt2-quantized'; // Verified working model
+    let pipelineInstance;
+    let isLoading = true;
+
+    async function initializeModel() {
+      try {
+        // Check WebAssembly support
+        if (typeof WebAssembly === 'undefined') {
+          throw new Error('WebAssembly not supported');
+        }
+
+        // Check if running in secure context
+        if (!window.isSecureContext) {
+          throw new Error('Requires HTTPS or localhost');
+        }
+
+        pipelineInstance = await pipeline('text-generation', MODEL_NAME, {
+          quantized: true,
+          max_length: 100,
+          temperature: 0.7,
+          use_cache: true,
+          progress_callback: (progress) => {
+            document.getElementById('loading').innerHTML = `
+              Loading model... ${Math.round(progress * 100)}%
+            `;
+          }
+        });
+        
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('chatContainer').classList.remove('hidden');
+        isLoading = false;
+      } catch (error) {
+        console.error('Error details:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('errorContainer').classList.remove('hidden');
+      }
+    }
+
+    async function sendMessage() {
+      if (isLoading) return;
+
+      const input = document.getElementById('userInput').value.trim();
+      if (!input) return;
+
+      // Add user message
+      addMessage(input, 'user-msg');
+      document.getElementById('userInput').value = '';
+
+      // Add loading indicator
+      const botMessage = addMessage('...', 'bot-msg');
+      
+      try {
+        const result = await pipelineInstance(input, {
+          max_new_tokens: 50,
+          do_sample: true
+        });
+        
+        // Replace loading message with real response
+        botMessage.textContent = result[0].generated_text;
+      } catch (error) {
+        botMessage.textContent = 'Error generating response';
+        console.error('Inference error:', error);
+      }
+    }
+
+    function addMessage(text, className) {
+      const message = document.createElement('div');
+      message.className = `message ${className}`;
+      message.textContent = text;
+      document.getElementById('chatHistory').appendChild(message);
+      document.getElementById('chatHistory').scrollTop = 
+        document.getElementById('chatHistory').scrollHeight;
+      return message;
+    }
+
+    // Initialize
+    initializeModel();
+  </script>
+</body>
+</html>
