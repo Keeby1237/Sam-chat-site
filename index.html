@@ -1,4 +1,19 @@
-<!DOCTYPE html>
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  background-color: white; /* Ensure the iframe has a white background */
+                }
+    
+                
+              </style>
+                        </head>
+                        <body>
+                            <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -148,14 +163,20 @@
   </div>
 
   <!-- Load Transformers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ @xenova/transformers@2.14.0/dist/transformers.min.js"></script>
+  <script src="https://unpkg.com/@xenova/transformers@2.15.0/dist/transformers.min.js"></script>
   <script>
-    const MODEL_NAME = 'Xenova/gpt2-quantized';
-    let pipelineInstance;
-    let isLoading = true;
+    // Wait for library to load
+    async function initialize() {
+      const MODEL_NAME = 'Xenova/gpt2-quantized';
+      let pipelineInstance;
+      let isLoading = true;
 
-    async function initializeModel() {
       try {
+        // Check if library is loaded
+        if (typeof transformers === 'undefined') {
+          throw new Error('Transformers.js library failed to load');
+        }
+
         // Check environment
         if (typeof WebAssembly === 'undefined') {
           throw new Error('WebAssembly not supported');
@@ -178,6 +199,9 @@
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('chatContainer').classList.remove('hidden');
         isLoading = false;
+
+        return pipelineInstance;
+
       } catch (error) {
         // Handle errors
         const errorDetails = document.getElementById('errorDetails');
@@ -189,37 +213,42 @@
       }
     }
 
-    async function sendMessage() {
-      if (isLoading) return;
+    // Initialize model and setup message handling
+    (async () => {
+      const pipelineInstance = await initialize();
 
-      const input = document.getElementById('userInput').value.trim();
-      if (!input) return;
+      window.sendMessage = async () => {
+        if (!pipelineInstance) return;
 
-      // Add user message
-      addMessage(input, 'user-msg');
-      document.getElementById('userInput').value = '';
+        const input = document.getElementById('userInput').value.trim();
+        if (!input) return;
 
-      // Add loading indicator
-      const botMessage = addMessage('...', 'bot-msg');
-      
-      try {
-        // Generate response
-        const result = await pipelineInstance(input, {
-          max_new_tokens: 50,
-          do_sample: true
-        });
+        // Add user message
+        addMessage(input, 'user-msg');
+        document.getElementById('userInput').value = '';
+
+        // Add loading indicator
+        const botMessage = addMessage('...', 'bot-msg');
         
-        botMessage.textContent = result[0].generated_text;
-      } catch (error) {
-        // Handle generation errors
-        botMessage.textContent = 'Error generating response';
-        const errorDetails = document.createElement('div');
-        errorDetails.className = 'error-details';
-        errorDetails.textContent = `Inference Error: ${error.message}`;
-        botMessage.appendChild(errorDetails);
-        console.error('Inference error:', error);
-      }
-    }
+        try {
+          // Generate response
+          const result = await pipelineInstance(input, {
+            max_new_tokens: 50,
+            do_sample: true
+          });
+          
+          botMessage.textContent = result[0].generated_text;
+        } catch (error) {
+          // Handle generation errors
+          botMessage.textContent = 'Error generating response';
+          const errorDetails = document.createElement('div');
+          errorDetails.className = 'error-details';
+          errorDetails.textContent = `Inference Error: ${error.message}`;
+          botMessage.appendChild(errorDetails);
+          console.error('Inference error:', error);
+        }
+      };
+    })();
 
     function addMessage(text, className) {
       const message = document.createElement('div');
@@ -230,9 +259,15 @@
         document.getElementById('chatHistory').scrollHeight;
       return message;
     }
-
-    // Initialize the model
-    initializeModel();
   </script>
 </body>
 </html>
+
+
+    
+              <script>
+                              
+              </script>
+                        </body>
+                        </html>
+                    
